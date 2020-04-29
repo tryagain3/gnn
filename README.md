@@ -10,3 +10,6 @@ Citation: Jie Tang, Jing Zhang, Limin Yao, Juanzi Li, Li Zhang, and Zhong Su. 20
 download link: https://www.dropbox.com/s/1bnz8r7mofx0osf/net_aminer.zip?dl=0&file_subpath=%2Fnet_aminer 
 
 reference https://ericdongyx.github.io/metapath2vec/m2v.html
+
+# technique
+https://ericdongyx.github.io/papers/KDD17-dong-chawla-swami-metapath2vec.pdf
