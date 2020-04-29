@@ -12,4 +12,4 @@ download link: https://www.dropbox.com/s/1bnz8r7mofx0osf/net_aminer.zip?dl=0&fil
 reference https://ericdongyx.github.io/metapath2vec/m2v.html
 
 # technique
-https://ericdongyx.github.io/papers/KDD17-dong-chawla-swami-metapath2vec.pdf
+metapath2vec  https://ericdongyx.github.io/papers/KDD17-dong-chawla-swami-metapath2vec.pdf
