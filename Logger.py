@@ -9,13 +9,13 @@ from datetime import datetime
 
 class DefaultLogger:
     def __init__(self, debug = True):
-        self.debug = debug
+        self.debug_flag = debug
     def info(self, message):   
         self.__print__('info', message)        
     def error(self, message):
         self.__print__('error', message)        
     def debug(self, message):
-        if self.debug:
+        if self.debug_flag:
             self.__print__('debug', message)         
     def __print__(self, tag, message):
         print('[{}][{}]{}'.format(datetime.now(), tag, message))

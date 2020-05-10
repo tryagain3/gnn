@@ -17,11 +17,11 @@ Created on Mon May  4 21:04:23 2020
 
 class MetaPathSchema:
     def __init__(self, schema_str):
-        self.schema = schema_str.split('->')
+        self.schema = schema_str.split('->')        
         # schema should have at lest 3 node types and 2 edge types
         # the total lengh of the schema should be an odd number
-        assert len(self.schema) >= 5 and (len(self.schema) & 1)
-        assert self.schema[0] == self.schema[-1]
+        assert len(self.schema) >= 5 and (len(self.schema) & 1), 'show schema: {}, raw:{}'.format(self.schema, schema_str)
+        assert self.schema[0] == self.schema[-1], 'show schema: {}, raw:{}'.format(self.schema, schema_str)
     def get_start_type(self):
         return self.schema[0]
     def __repr__(self):
@@ -39,7 +39,7 @@ class MetaPathSchemaIter:
             edge_type = self.meta_path_schema.schema[len(self.meta_path_schema.schema) - 2]
         else:
             edge_type = self.meta_path_schema.schema[self.i - 1]
-        self.i = (self.i + 2) % len(self.meta_path_schema)
+        self.i = (self.i + 2) % len(self.meta_path_schema.schema)
         return node_type, edge_type
         
     

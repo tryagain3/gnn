@@ -30,6 +30,7 @@ from Logger import DefaultLogger
 from HeterogeneousGraph import HeterogeneousGraph
 from MetaPathSchema import MetaPathSchema
 from RandomWalkDataset import RandomWalkDataset
+from RandomWalk import RandomWalk
 import os
 
 AUTHOR_NODE_TYPE = 'A'
@@ -38,7 +39,9 @@ CONF_NODE_TYPE = 'C'
 def parse_file(file_path, g, node_type):
     result = defaultdict(list)
     for line in get_data_row(file_path):
-        x, y = line[:-1].split('\t')
+        line = line if line and line[-1]!='\n' else line[:-1]
+        if not line: continue
+        x, y = line.split('\t')
         result[x].append(y)
         g.add_node(y, node_type)
     return result
@@ -46,7 +49,9 @@ def parse_file(file_path, g, node_type):
 def parse_schemas_file(file_path):
     ret = []
     for line in get_data_row(file_path):
-        ret.append(MetaPathSchema(line[:-1]))
+        line = line if line and line[-1]!='\n' else line[:-1]
+        if not line: continue
+        ret.append(MetaPathSchema(line))
     return ret
         
 
@@ -75,7 +80,7 @@ def load_data(input_folder=r'D:\data\net_aminer', num_walk=10, walk_length=5, ne
     logger.info('read {} papers from paper_conf.txt'.format(len(p_c)))
     
     logger.info('average #paper per author: {}'.format(len(p_a) / author_cnt))
-    logger.info('average #paper per author: {}'.format(len(p_c) / conf_cnt))
+    logger.info('average #paper per conf: {}'.format(len(p_c) / conf_cnt))
     
     for p_id, a_ids in p_a.items():
         for a_id in a_ids:
@@ -83,8 +88,8 @@ def load_data(input_folder=r'D:\data\net_aminer', num_walk=10, walk_length=5, ne
                 # no edge type for AMiner graph
                 g.add_edge(a_id, c_id, '')    
     
-    logger.info('get {} Author-Conf edges'.format(g.edge_numer()))
-    walk_generator = RandomWalk(nex_g=g, logger=logger)
+    logger.info('get {} Author-Conf edges'.format(g.edge_number()))
+    walk_generator = RandomWalk(g=g, logger=logger)
     
     logger.info('load meta path schemas')
     schemas = parse_schemas_file(os.path.join(input_folder, 'meta_path_schemas.txt'))
@@ -94,14 +99,14 @@ def load_data(input_folder=r'D:\data\net_aminer', num_walk=10, walk_length=5, ne
         logger.debug('{}:"{}"'.format(i, s))
     
     logger.info('generate random walks with configration: num_walk={}, walk_length={}'.format(num_walk, walk_length))
-    walks = walk_generator.random_walk(num_walk=num_walk, walk_length=walk_length, schemas=schemas, logger=logger)
+    walks = walk_generator.random_walk(num_walk=num_walk, walk_length=walk_length, schemas=schemas)
     logger.info('total generate {} random walks  '.format(len(walks)))
     
     logger.info('generate training samples')
-    dataset = RandomWalkDataset(walks=walks, negative_sample_size=negative_sample_size, window_size=window_size, logger=logger))
+    dataset = RandomWalkDataset(walks=walks, negative_sample_size=negative_sample_size, window_size=window_size, logger=logger)
     samples = dataset.get_all_samples()
-    logger.info('total generate {} training samples'.format(samples))
-    
+    logger.info('total generate {} training samples'.format(len(samples)))
+    logger.debug('show top 5 generated samples: {}'.format(samples[:5]))
     file_path = os.path.join(input_folder, 'train_samples.txt')
     logger.info('write samples to file: {}'.format(file_path))
     write_json_lines(file_path, samples)
@@ -112,7 +117,8 @@ def load_data(input_folder=r'D:\data\net_aminer', num_walk=10, walk_length=5, ne
     
     logger.info('end load data')
     
-    
+if __name__ == '__main__':
+    load_data(input_folder=r'D:\data\net_aminer_test')   
         
         
         

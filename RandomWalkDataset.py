@@ -9,14 +9,14 @@ Created on Wed May  6 21:39:55 2020
 
 import numpy as np
 import torch
-from collections import Counter
+import collections
+import random
 from torch.utils.data import Dataset
 from Logger import DefaultLogger
-import random
+RATIO = 3.0 / 4.0
 
 class RandomWalkDataset(Dataset):    
-    # the freq ratio, please refer to http://mccormickml.com/2017/01/11/word2vec-tutorial-part-2-negative-sampling/
-    RATIO = 3.0 / 4.0 
+    # the freq ratio, please refer to http://mccormickml.com/2017/01/11/word2vec-tutorial-part-2-negative-sampling/    
     def __init__(self, walks, negative_sample_size=5, window_size=5, ratio=RATIO, logger=DefaultLogger(True)):
         """
         the inpt data is a list of walks and each element in the walk is the id of the node        
@@ -29,7 +29,7 @@ class RandomWalkDataset(Dataset):
         self.logger = logger        
         np.random.seed(0)
         random.seed(0)
-        self.logger.info('initalize RandonDataDataSet with configuration: {}'.formmat(self.__get_config__()))
+        self.logger.info('initalize RandonDataDataSet with configuration: {}'.format(self.__get_config__()))
         self.__construct_samples__(walks)
     
     def __get_config__(self):
@@ -41,7 +41,7 @@ class RandomWalkDataset(Dataset):
         2 construct skip-gram model training samples
         """
         self.logger.info('start to construct training samples')
-        self.logger.info('read {} walks'.format(len(self.walks)))
+        self.logger.info('read {} walks'.format(len(walks)))
         freq = collections.Counter()
         for walk in walks:
             for node in walk:
@@ -52,12 +52,12 @@ class RandomWalkDataset(Dataset):
         self.index_node = []
         probs = []
         for node, count in freq.items():
-            self.nodex_index[node] = len(probs)
+            self.node_index[node] = len(probs)
             self.index_node.append(node)
             probs.append(count)
-        self.probs = np.array(probs) ** RATIO
+        self.probs = np.array(probs) ** self.ratio
         self.probs = self.probs / np.sum(self.probs)
-        self.logger.debug('negative sample probs: {}'.format(self.probs))
+        self.logger.debug('negative sample probs (top 10): {}'.format(self.probs[:10]))
         
         self.samples = []
         for walk in walks:            
@@ -81,9 +81,9 @@ class RandomWalkDataset(Dataset):
         index = self.node_index[node]
         cnt = 0
         while len(negative_samples) < self.negative_sample_size:
-            sample_index = np.random.choice(len(self.nodex_index), size=1, replace=False, p=self.probs)
+            sample_index = np.random.choice(len(self.node_index), size=1, replace=False, p=self.probs)
             if sample_index != index:
-                negtive_samples.add(sample_index)
+                negative_samples.add(sample_index[0])
             cnt += 1
         #self.logger.debug('samples {} times to generate {} negative samples'.format(cnt, self.negative_sample_size))
         return [self.index_node[i] for i in negative_samples]

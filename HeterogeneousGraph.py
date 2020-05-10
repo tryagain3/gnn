@@ -9,14 +9,13 @@ Created on Sat May  9 12:05:10 2020
 
 
 import networkx as nx
-import collections
+
+TYPE_ATTR = 'type'
+WEIGHT_ATTR = 'weight'
 
 class HeterogeneousGraph:
-    TYPE_ATTR = 'type'
-    WEIGHT_ATTR = 'weight'
     def __init__(self):
         self.g = nx.MultiGraph()
-        self.edgetype2index = collections.defautldict(list)
         
     def add_edge(self, u, v, t, w = 1):
         """        
@@ -44,7 +43,7 @@ class HeterogeneousGraph:
         """
         add features for edge (u, v, t)
         """
-         if u not in self.g:
+        if u not in self.g:
             raise Exception('add_edge_feature failed:  node "{}" not in graph'.format(u))
         
         if v not in self.g:
@@ -104,7 +103,7 @@ class HeterogeneousGraph:
                 continue
             if edge_type != None and all(attr[TYPE_ATTR] != edge_type for attr in self.g[u][v]):
                 continue
-            resutl.add(v)
+            result.append(v)
         return result
     
     def node_number(self, node_type = None):
@@ -131,4 +130,11 @@ class HeterogeneousGraph:
                         cnt += 1
                         break
             return cnt
+    
+    def get_nodes(self):
+        """
+        return all nodes in this graph
+        """
+        for node in self.g.nodes:
+            yield node
         
