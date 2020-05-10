@@ -19,12 +19,13 @@ import random
 import networkx as nx
 import numpy as np
 from Logger import DefaultLogger
-
-NODE_TYPE_ATTR = 'Type'
+from HeterogeneousGraph import HeterogeneousGraph
 
 class RandomWalk:
-    def __init__(self, nx_g, loggger=DefaultLogger(True)):
-        self.nx_g = nx_g    
+    def __init__(self, g, loggger=DefaultLogger(True)):
+        self.g = g    
+
+    def walk(self, walk_length, start, schema=None):
     """
     walk_length: the length of the walk
     start: the start node
@@ -32,34 +33,33 @@ class RandomWalk:
     meta-paths are commonly used in a symmetric way, that is, its rst node type V1 is the same with the last one Vl
     plesae refer https://ericdongyx.github.io/papers/KDD17-dong-chawla-swami-metapath2vec.pdf for more understanding of meta_path
     """
-    def walk(self, walk_length, start, schema=None):
         rand = random.Random()
         walk = [start]
         schema_iter = schema.get_iter()
         next(schema_iter)
         while len(walk) < walk_length:
             cur = walk[-1]
-            candidates = []
-            for node in self.nx_g[cur]:
-                if schema == None or self.nx_g[node].get(NODE_TYPE_ATTR, '') == next(schema_iter):
-                    candidates.append(node)
+            node_type = edge_type = None
+            if schema == None:
+                node_type, edge_type = next(schema_iter)
+            candidates = self.g.get_neighbours(cur, node_type, edge_type):                
             if candidates:
                 walk.append(rand.choice(candidates))
             else:
                 break
         return walk
     
+    def random_walk(self, num_walk, walk_length, schemas=None):
     """
-    num_walk: the number of walks needed to be generated for each schema
+    num_walk: the number of walks needed to be generated for each schema/node
     walk_length: the length of the walk
     start: the start node
     meta_path_schemas: the list of meta_path_schema
     plesae refer https://ericdongyx.github.io/papers/KDD17-dong-chawla-swami-metapath2vec.pdf for more understanding of meta_path    
     """
-    def random_walk(self, num_walk, walk_length, schemas=None):
         self.logger.info('start generate random walks')
         walks = []
-        nodes = list(self.nx_g.nodes())
+        nodes = list(self.g.nodes())
         if schemas:
             self.logger.info('schemas count={}'.format(len(schemas)))
             self.logger.info('list all schemas')
@@ -73,7 +73,7 @@ class RandomWalk:
                     walks.append(self.walk(walk_length=walk_length, start=node))
                 else:
                     for schema in schemas:
-                        if schema.get_start_type() == self.nx_g.nodes[node].get(NODE_TYPE_ATTR, ''):
+                        if schema.get_start_type() == self.g.get_node_type(node):
                             walks.append(self.walk(walk_length=walk_length, start=node, schema=schema))
         self.logger.info('generate {} randow walks'.format(len(walks)))
         self.logger.info('end generate random walks')

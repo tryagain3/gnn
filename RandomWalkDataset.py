@@ -17,7 +17,7 @@ import random
 class RandomWalkDataset(Dataset):    
     # the freq ratio, please refer to http://mccormickml.com/2017/01/11/word2vec-tutorial-part-2-negative-sampling/
     RATIO = 3.0 / 4.0 
-    def __init__(self, walks, negative_sample_size=5, window_size= , ratio=RATIO, loggger=DefaultLogger(True)):
+    def __init__(self, walks, negative_sample_size=5, window_size=5, ratio=RATIO, logger=DefaultLogger(True)):
         """
         the inpt data is a list of walks and each element in the walk is the id of the node        
         window_size is the window size for skip-gram model
@@ -87,6 +87,9 @@ class RandomWalkDataset(Dataset):
             cnt += 1
         #self.logger.debug('samples {} times to generate {} negative samples'.format(cnt, self.negative_sample_size))
         return [self.index_node[i] for i in negative_samples]
+    
+    def get_all_samples(self):
+        return self.samples
                
     def __len__(self):
         return len(self.samples)
