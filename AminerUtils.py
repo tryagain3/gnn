@@ -29,9 +29,11 @@ from IIOUtils import *
 from Logger import DefaultLogger
 from HeterogeneousGraph import HeterogeneousGraph
 from MetaPathSchema import MetaPathSchema
-from RandomWalkDataset import RandomWalkDataset
+from SkipGramDataSet import SkipGramDataSet
+from SkipGramDataProvider import SkipGramDataProvider
 from RandomWalk import RandomWalk
 import os
+import json
 
 AUTHOR_NODE_TYPE = 'A'
 CONF_NODE_TYPE = 'C'
@@ -102,24 +104,38 @@ def load_data(input_folder=r'D:\data\net_aminer', num_walk=10, walk_length=5, ne
     walks = walk_generator.random_walk(num_walk=num_walk, walk_length=walk_length, schemas=schemas)
     logger.info('total generate {} random walks  '.format(len(walks)))
     
-    logger.info('generate training samples')
-    dataset = RandomWalkDataset(walks=walks, negative_sample_size=negative_sample_size, window_size=window_size, logger=logger)
-    samples = dataset.get_all_samples()
-    logger.info('total generate {} training samples'.format(len(samples)))
-    logger.debug('show top 5 generated samples: {}'.format(samples[:5]))
-    file_path = os.path.join(input_folder, 'train_samples.txt')
-    logger.info('write samples to file: {}'.format(file_path))
-    write_json_lines(file_path, samples)
-    
     file_path = os.path.join(input_folder, 'random_walks.txt')
     logger.info('write walks to file: {}'.format(file_path))
     write_json_lines(file_path, walks)
-    
+    gen_training_data(input_folder, walks, negative_sample_size, window_size, logger)
+
+def load_data2(input_folder=r'D:\data\net_aminer', negative_sample_size=5, window_size=5, logger=DefaultLogger(True)):
+    walk_file_path = os.path.join(input_folder, 'random_walks.txt')
+    logger.info('load walk file {}'.format(walk_file_path))
+    walks = [json.loads(line) for line in get_data_row(walk_file_path)]
+    logger.info('total load {} random walks  '.format(len(walks)))
+    gen_training_data(input_folder, walks, negative_sample_size, window_size, logger)
+
+def gen_training_data(input_folder, walks, negative_sample_size, window_size, logger):        
+    logger.info('generate training samples')
+    data_provider = SkipGramDataProvider(walks=walks, negative_sample_size=negative_sample_size, window_size=window_size, logger=logger)
+    dataset = SkipGramDataSet(data_provider)
+    samples = [dataset.__iter__() for _ in range(10000)]
+    logger.info('total generate {} training samples'.format(len(samples)))
+    logger.debug('show top 5 generated samples: {}'.format(samples[:5]))    
+    file_path = os.path.join(input_folder, 'train_samples.txt')
+    logger.info('write samples to file: {}'.format(file_path))
+    write_json_lines(file_path, samples)   
+    file_path = os.path.join(input_folder, 'node2id.txt')
+    write_lines(file_path, ['{}:{}'.format(node, id) for node, id in dataset.node2id.items()])
     logger.info('end load data')
     
+    
 if __name__ == '__main__':
-    load_data(input_folder=r'D:\data\net_aminer_test')   
-        
+    #load_data(input_folder=r'D:\data\net_aminer_test') 
+    #load_data2(input_folder=r'D:\data\net_aminer_test', logger=DefaultLogger(True)) 
+    #load_data(input_folder=r'D:\data\net_aminer')    
+    load_data2(input_folder=r'D:\data\net_aminer')     
         
         
         
