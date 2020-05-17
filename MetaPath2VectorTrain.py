@@ -73,7 +73,7 @@ class MetaPath2VecTrainer:
             optimizer = optim.SparseAdam(self.model.parameters(), lr=self.initial_lr)           
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, self.num_batch)
             total_loss = 0.0
-            bucket_size = 10
+            bucket_size = 1
             bucket = bucket_size
             for i, sample_batched in enumerate(self.dataloader):
                 if i >= self.num_batch:
@@ -90,14 +90,15 @@ class MetaPath2VecTrainer:
                     loss.backward()
                     cur_loss = loss.item()
                     total_loss += cur_loss
-                    if 100 * (i + 1) / self.num_batch >= bucket:
+                    if 1000 * (i + 1) / self.num_batch >= bucket:
                         self.logger.info("batch: {}/{}({:.2%}), samples: average loss={}; current loss={}".format(i + 1, self.num_batch, (i + 1) / self.num_batch, total_loss / (i + 1), cur_loss))
                         bucket += bucket_size
+                    self.logger.debug("batch: {}/{}({:.2%}), samples: average loss={}; current loss={}".format(i + 1, self.num_batch, (i + 1) / self.num_batch, total_loss / (i + 1), cur_loss))
         self.logger.info('save embedding to path: {}'.format(self.output_file_path))
         self.model.save_embedding(self.dataset.data_provider.id2node, self.output_file_path)
         self.logger.info('end train')
 
-# python MetaPath2VectorTrain.py -i D:\data\net_aminer_test\random_walks.txt -o D:\data\net_aminer_test\node_embedding.txt -num_batch 5 -debug false
+# python MetaPath2VectorTrain.py -i D:\data\net_aminer_test\random_walks.txt -o D:\data\net_aminer_test\node_embedding.txt -num_batch 5 -debug true
 # python MetaPath2VectorTrain.py -i D:\data\net_aminer\random_walks.txt -o D:\data\net_aminer\node_embedding.txt -num_batch 1000000 -num_epoch 5 -debug false
         
 if __name__ == '__main__':

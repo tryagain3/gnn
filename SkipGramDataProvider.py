@@ -15,7 +15,7 @@ import collections
 import random
 from Logger import DefaultLogger
 RATIO = 3.0 / 4.0
-NEGATIVE_TABLE_SIZE = 1e3
+NEGATIVE_TABLE_SIZE = 1e8
 
 class SkipGramDataProvider:    
     # the freq ratio, please refer to http://mccormickml.com/2017/01/11/word2vec-tutorial-part-2-negative-sampling/    
@@ -75,10 +75,13 @@ class SkipGramDataProvider:
         1 round index, which will make it generate endless training data
         2 output format list([u, v, [neg_v1, neg_v2, ...., neg_v#negative_sample_size]])
         """
-        walk = self.walks[self.walk_index]        
+        walk = self.walks[self.walk_index]  
+        
         self.logger.debug('start to generate training data (negative samples) for walk: {}'.format(self.walk_index))
+        self.logger.debug('walk_len={}'.format(len(walk)))
         samples = []                 
-        for i, node in enumerate(walk):                
+        for i, node in enumerate(walk):         
+            self.logger.debug('for node {}'.format(i))
             left = max(0, i - self.window_size)
             right = min(len(walk) - 1, i + self.window_size)
             for j in range(left, right + 1):
@@ -136,7 +139,7 @@ class SkipGramDataProvider:
                 negative_samples.add(self.neg_table[self.neg_pos])
             self.neg_pos = (self.neg_pos + 1) % len(self.neg_table)
             cnt += 1
-        #self.logger.debug('samples {} times to generate {} negative samples'.format(cnt, self.negative_sample_size))
+        self.logger.debug('samples {} times to generate {} negative samples'.format(cnt, self.negative_sample_size))
         return [int(x) for x in negative_samples]
 
     

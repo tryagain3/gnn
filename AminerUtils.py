@@ -32,6 +32,7 @@ from MetaPathSchema import MetaPathSchema
 from SkipGramDataSet import SkipGramDataSet
 from SkipGramDataProvider import SkipGramDataProvider
 from RandomWalk import RandomWalk
+from torch.utils.data import DataLoader
 import os
 import json
 
@@ -120,16 +121,25 @@ def gen_training_data(input_folder, walks, negative_sample_size, window_size, lo
     logger.info('generate training samples')
     data_provider = SkipGramDataProvider(walks=walks, negative_sample_size=negative_sample_size, window_size=window_size, logger=logger)
     dataset = SkipGramDataSet(data_provider)
-    samples = [dataset.__iter__() for _ in range(10000)]
+    dataloader = DataLoader(dataset, batch_size=3, shuffle=False, num_workers=0, collate_fn=dataset.collate)
+    samples = []
+    i = 0
+    for data in dataloader:
+        if i >= 100:
+            break
+        samples.extend(data)
+        i += 1
     logger.info('total generate {} training samples'.format(len(samples)))
     logger.debug('show top 5 generated samples: {}'.format(samples[:5]))    
     file_path = os.path.join(input_folder, 'train_samples.txt')
     logger.info('write samples to file: {}'.format(file_path))
-    write_json_lines(file_path, samples)   
+    write_json_lines(file_path, [get_vale_from_tensor(item) for item in samples])   
     file_path = os.path.join(input_folder, 'node2id.txt')
-    write_lines(file_path, ['{}:{}'.format(node, id) for node, id in dataset.node2id.items()])
+    write_lines(file_path, ['{}:{}'.format(node, id) for node, id in dataset.data_provider.node2id.items()])
     logger.info('end load data')
-    
+def get_vale_from_tensor(item):
+    x, y, z = item[0], item[1], item[2]
+    return [str(x.numpy()), str(y.numpy()), str(z.numpy())]
     
 if __name__ == '__main__':
     #load_data(input_folder=r'D:\data\net_aminer_test') 
