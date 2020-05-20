@@ -98,7 +98,7 @@ class MetaPath2VecTrainer:
         self.model.save_embedding(self.dataset.data_provider.id2node, self.output_file_path)
         self.logger.info('end train')
 
-# python MetaPath2VectorTrain.py -i D:\data\net_aminer_test\random_walks.txt -o D:\data\net_aminer_test\node_embedding.txt -num_batch 5 -debug true
+# python MetaPath2VectorTrain.py -i D:\data\net_aminer_test\random_walks.txt -o D:\data\net_aminer_test\node_embedding.txt -num_batch 5 -debug false
 # python MetaPath2VectorTrain.py -i D:\data\net_aminer\random_walks.txt -o D:\data\net_aminer\node_embedding.txt -num_batch 1000000 -num_epoch 5 -debug false
         
 if __name__ == '__main__':

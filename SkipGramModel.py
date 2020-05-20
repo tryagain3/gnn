@@ -19,17 +19,14 @@ class SkipGramModel(nn.Module):
         super(SkipGramModel, self).__init__()
         self.emb_size = emb_size
         self.emb_dimension = emb_dimension
-        self.u_embeddings = nn.Embedding(emb_size, emb_dimension, sparse=True)
-        self.v_embeddings = nn.Embedding(emb_size, emb_dimension, sparse=True)
-
+        self.embeddings = nn.Embedding(emb_size, emb_dimension, sparse=True)
         initrange = 1.0 / self.emb_dimension
-        init.uniform_(self.u_embeddings.weight.data, -initrange, initrange)
-        init.constant_(self.v_embeddings.weight.data, 0)
+        init.uniform_(self.embeddings.weight.data, -initrange, initrange)
 
     def forward(self, pos_u, pos_v, neg_v):
-        emb_u = self.u_embeddings(pos_u)
-        emb_v = self.v_embeddings(pos_v)
-        emb_neg_v = self.v_embeddings(neg_v)
+        emb_u = self.embeddings(pos_u)
+        emb_v = self.embeddings(pos_v)
+        emb_neg_v = self.embeddings(neg_v)
 
         score = torch.sum(torch.mul(emb_u, emb_v), dim=1)
         score = torch.clamp(score, max=10, min=-10)
@@ -42,9 +39,10 @@ class SkipGramModel(nn.Module):
         return torch.mean(score + neg_score)
     
     def save_embedding(self, id2node, file_path):
-        embedding = self.u_embeddings.weight.cpu().data.numpy()
+        embedding = self.embeddings.weight.cpu().data.numpy()
         output = []
         for id, node in enumerate(id2node):
-            emb = embedding[id]
-            output.append('{}:{}'.format(node, emb))
-        write_lines(file_path, output)
+            emb = embedding[id]            
+            ret = [node, [float(x) for x in emb]]
+            output.append(ret)
+        write_json_lines(file_path, output)
