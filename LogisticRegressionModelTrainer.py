@@ -22,6 +22,8 @@ class LogisticRegressionModelTrainer:
         self.num_epoch = num_epoch
         self.num_batch = num_batch
         self.initial_lr = initial_lr
+        self.input_size = input_size
+        self.output_size = output_size
         self.model = LogisticRegressionModel(self.input_size, self.output_size)
         self.use_cuda = torch.cuda.is_available()
         self.device = torch.device("cuda" if self.use_cuda else "cpu")
@@ -45,7 +47,7 @@ class LogisticRegressionModelTrainer:
         for epoch in range(self.num_epoch):
             self.logger.info("epoch={} started.".format(epoch + 1))     
             criterion = torch.nn.CrossEntropyLoss()
-            optimizer = optim.SparseAdam(self.model.parameters(), lr=self.initial_lr)           
+            optimizer = optim.Adam(self.model.parameters(), lr=self.initial_lr)           
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, self.num_batch)
             total_loss = 0.0
             bucket_size = 1
@@ -53,7 +55,8 @@ class LogisticRegressionModelTrainer:
             for i, sample_batched in enumerate(self.dataloader):
                 if i >= self.num_batch:
                     break
-                x_data, y_data = sample_batched
+                x_data = sample_batched[0].to(self.device)
+                y_data = sample_batched[1].to(self.device)
                 y_pred = self.model.forward(x_data)
                 loss = criterion(y_pred, y_data)                
                 optimizer.step()
@@ -62,7 +65,7 @@ class LogisticRegressionModelTrainer:
                 loss.backward()
                 cur_loss = loss.item()
                 total_loss += cur_loss
-                if 1000 * (i + 1) / self.num_batch >= bucket:
+                if 100 * (i + 1) / self.num_batch >= bucket:
                     self.logger.info("batch: {}/{}({:.2%}), samples: average loss={}; current loss={}".format(i + 1, self.num_batch, (i + 1) / self.num_batch, total_loss / (i + 1), cur_loss))
                     bucket += bucket_size
                 self.logger.debug("batch: {}/{}({:.2%}), samples: average loss={}; current loss={}".format(i + 1, self.num_batch, (i + 1) / self.num_batch, total_loss / (i + 1), cur_loss))    

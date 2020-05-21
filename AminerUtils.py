@@ -39,6 +39,7 @@ from LogisticRegressionModelTrainer import LogisticRegressionModelTrainer
 from torch.utils.data import IterableDataset
 from torch.utils.data import DataLoader
 import torch
+import numpy as np
 
 AUTHOR_NODE_TYPE = 'A'
 CONF_NODE_TYPE = 'C'
@@ -85,7 +86,7 @@ class ListDataSet(IterableDataset):
     @staticmethod
     def collate(batches):
         x_data = [x for x, _ in batches]
-        y_data = [v for _, y in batches]
+        y_data = [y for _, y in batches]
         return torch.FloatTensor(x_data), torch.LongTensor(y_data)
 
         
@@ -192,7 +193,6 @@ def load_conf_data_for_classification(input_folder=r'D:\data\net_aminer', logger
     conf2id = {y:x for x, y in raw}
     logger.info('total load {} conf -> id'.format(len(conf2id)))
     
-    num_category = 8    
     logger.info('build conf id to labels ')
     cnt = 0
     dup_id_cnt = 0
@@ -229,7 +229,6 @@ def load_author_data_for_classification(input_folder=r'D:\data\net_aminer', logg
     author2id = {y:x for x, y in raw}
     logger.info('total load {} conf -> id'.format(len(author2id)))
     
-    num_category = 8    
     logger.info('build author id to labels ')
     cnt = 0
     dup_id_cnt = 0
@@ -246,6 +245,7 @@ def load_author_data_for_classification(input_folder=r'D:\data\net_aminer', logg
     logger.info('#failed to find author name in author2id map: {}'.format(cnt))
     logger.info('#dup id with duplicate labels: {}'.format(dup_id_cnt))
     return author2labels
+
 def load_embedding(input_folder=r'D:\data\net_aminer', logger=DefaultLogger(True)):
     """
     should contain the following data
@@ -255,53 +255,106 @@ def load_embedding(input_folder=r'D:\data\net_aminer', logger=DefaultLogger(True
     08/29/2017  09:37 PM            73,552 id_conf.txt
     05/16/2020  06:38 PM     2,848,353,597 node_embedding.txt
     """
-    pass
+    embedding = {}
+    for line in get_data_row(os.path.join(input_folder, 'node_embedding.txt')):
+        item = json.loads(line)
+        embedding[item[0]] = item[1]
+    return embedding
+def split(data, rate):
+    """
+    random split data into train and test given the test rate
+
+    """
+    n = len(data)
+    np.random.shuffle(data)
+    test_size = int(n * rate)
+    return data[test_size:], data[:test_size]
     
-def train_evaluate_conf_classification(conf2labels, embedding, rate=0.2, batch_size=32, num_epoch=3, num_batch=100000, initial_lr=0.001, logger=DefaultLogger(True)):   
-    num_category = 8
-    emb_dimension = 128
+def train_evaluate(data_labels, node_type, embedding, rate=0.2, batch_size=32, num_epoch=3, num_batch=100000, initial_lr=0.001, logger=DefaultLogger(True)):   
+    num_category = 8    
+    emb_dimension = None
     logger.info('map embedding feature to labels')
     data = []
     cnt = 0
-    for raw_id, label in conf2labels.items():
-        embedding_id = build_node_id(raw_id, CONF_NODE_TYPE)
+    for raw_id, label in data_labels.items():
+        embedding_id = build_node_id(raw_id, node_type)
+        #logger.debug('embedding_id={}'.format(embedding_id))
         if embedding_id in embedding:
             data.append([embedding[embedding_id], label])
+            emb_dimension = len(embedding[embedding_id])
         else:
             cnt += 1
-    logger.info('#confs with no embedding map: {}'.format(cnt))    
-    train, test = split(data, rate=rate)
-    
+    logger.info('#data with no embedding map: {}'.format(cnt))    
+    logger.info('total data count: {}'.format(len(data)))    
+    logger.info('split data into train and test with rate: {}'.format(rate))
+    train, test = split(data, rate=rate)    
+    logger.info('train size: {}'.format(len(train)))
+    logger.info('test size: {}'.format(len(test)))
     data_set = ListDataSet(train)
-    data_loader = DataLoader(self.dataset, batch_size=batch_size, shuffle=False, num_workers=0, collate_fn=self.dataset.collate)
-    trainer = LogisticRegressionModelTrainer(dataloader=dataloader, 
+    data_loader = DataLoader(data_set, batch_size=batch_size, shuffle=False, num_workers=0, collate_fn=data_set.collate)
+    trainer = LogisticRegressionModelTrainer(dataloader=data_loader, 
+                                             batch_size=batch_size,
                                              input_size=emb_dimension, 
                                              output_size=num_category, 
                                              num_epoch=num_epoch, 
                                              num_batch=num_batch, 
                                              initial_lr=initial_lr,
                                              logger=logger)
+    logger.info('start model training')
     model = trainer.train()
-    tp, fp, fn = [0] * numc_category, [0] * numc_category, [0] * numc_category
+    logger.info('end model training')
+    tp, fp, fn = [0] * num_category, [0] * num_category, [0] * num_category
+    
+    logger.info('start model evaluation and compute metrics')
     with torch.no_grad():
         model.eval()
-        x_data = [x for x, _ in test]
-        y_data = [y for x, _ in test]
+        x_data = torch.FloatTensor([x for x, _ in test]).to(trainer.device)
+        y_data = [y for _, y in test]
+        
         outputs = model(x_data)
         _, predicted = torch.max(outputs.data, 1)
-        c = (predicted == labels).squeeze()
-        for i in range(numc_category):
-            label = labels[i]
-            class_correct[label] += c[i].item()
-            class_total[label] += 1
-    pass
-        
-        
-        
-
+        cnt = 0
+        for model_label, real_label in zip(predicted.cpu().numpy(), y_data):
+            if model_label == real_label:            
+                tp[real_label] += 1
+            else:                
+                # this is a recall miss for real_label, so fn + 1
+                fn[real_label] += 1
+                
+                # this is precision  miss for model_label, so fp + 1
+                fp[model_label] += 1
+            cnt += 1
+    logger.info('total evaluation samples: {}'.format(cnt))
+    # micro vs marco precision/recall/f1
+    # https://datascience.stackexchange.com/questions/15989/micro-average-vs-macro-average-performance-in-a-multiclass-classification-settin
+    logger.info('show performance for each cateogry')
+    logger.info('class\tf1\tprecision\trecall\ttp\tfp\tfn')
+    total_pr = 0
+    total_re = 0
+    total_tp = total_fp = total_fn = 0
+    for i in range(num_category):
+        pr = tp[i] / (tp[i] + fp[i]) if tp[i] + fp[i] > 0 else 0
+        re = tp[i] / (tp[i] + fn[i]) if tp[i] + fn[i] > 0 else 0
+        f1 = 2 * (pr * re) / (pr + re) if pr + re > 0 else 0
+        total_pr += pr
+        total_re += re
+        total_tp += tp[i]
+        total_fp += fp[i]
+        total_fn += fn[i]
+        logger.info('{}\t{:.2%}\t{:.2%}\t{:.2%}\t{}\t{}\t{}'.format(i + 1, f1, pr, re, tp[i], fp[i], fn[i]))
     
+    logger.info('show average performance')
+    logger.info('avg_type\tf1\precision\trecall')
+    micro_pr = total_tp / (total_tp + total_fp) if total_tp + total_fp > 0 else 0
+    micro_re = total_tp / (total_tp + total_fn) if total_tp + total_fn > 0 else 0
+    micro_f1 = 2 * (micro_pr * micro_re) / (micro_pr + micro_re) if micro_pr + micro_re > 0 else 0
+    logger.info('micro\t{:.2%}\t{:.2%}\t{:.2%}'.format(micro_f1, micro_pr, micro_re))
     
-    
+    macro_pr = total_pr / num_category
+    macro_re = total_re / num_category
+    macro_f1 = 2 * (macro_pr * macro_re) / (macro_pr + macro_re) if macro_pr + macro_re > 0 else 0
+    logger.info('macro\t{:.2%}\t{:.2%}\t{:.2%}'.format(macro_f1, macro_pr, macro_re))
+    logger.info('end evaluation')
     
 if __name__ == '__main__':
     #load_data(input_folder=r'D:\data\net_aminer_test') 
@@ -309,15 +362,18 @@ if __name__ == '__main__':
     #load_data(input_folder=r'D:\data\net_aminer')    
     #load_data2(input_folder=r'D:\data\net_aminer')     
     
-    """
-    input_folder = r'D:\data\net_aminer'
+    
+    input_folder = r'D:\data\net_aminer_test'
     logger = DefaultLogger(True)
     conf2labels = load_conf_data_for_classification(input_folder=input_folder, logger=logger)     
     author2labels = load_author_data_for_classification(input_folder=input_folder,logger=logger)     
-    dup_ids = set([build_node_id(x,CONF_NODE_TYPE) for x in conf2labels.keys()]) & set([build_node_id(x, AUTHOR_NODE_TYPE) for x in author2labels.keys()])
-    logger.info('#duplicate id between author and conf: {}'.format(len(dup_ids)))
-    logger.info('duplicate ids: {}'.format(dup_ids))
-    """
+    embedding = load_embedding(input_folder=input_folder,logger=logger)     
+    #train_evaluate(conf2labels, CONF_NODE_TYPE, embedding, 0.5, num_batch=100, initial_lr=0.01, logger=logger)
+    train_evaluate(author2labels, AUTHOR_NODE_TYPE, embedding, 0.5, num_batch=100, initial_lr=0.01, logger=logger)
+    #dup_ids = set([build_node_id(x,CONF_NODE_TYPE) for x in conf2labels.keys()]) & set([build_node_id(x, AUTHOR_NODE_TYPE) for x in author2labels.keys()])
+    #logger.info('#duplicate id between author and conf: {}'.format(len(dup_ids)))
+    #logger.info('duplicate ids: {}'.format(dup_ids))
+    
         
         
         
