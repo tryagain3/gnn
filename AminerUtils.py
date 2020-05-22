@@ -344,7 +344,7 @@ def train_evaluate(data_labels, node_type, embedding, rate=0.2, batch_size=32, n
         logger.info('{}\t{:.2%}\t{:.2%}\t{:.2%}\t{}\t{}\t{}'.format(i + 1, f1, pr, re, tp[i], fp[i], fn[i]))
     
     logger.info('show average performance')
-    logger.info('avg_type\tf1\precision\trecall')
+    logger.info('avg_type\tf1\tprecision\trecall')
     micro_pr = total_tp / (total_tp + total_fp) if total_tp + total_fp > 0 else 0
     micro_re = total_tp / (total_tp + total_fn) if total_tp + total_fn > 0 else 0
     micro_f1 = 2 * (micro_pr * micro_re) / (micro_pr + micro_re) if micro_pr + micro_re > 0 else 0
@@ -363,13 +363,15 @@ if __name__ == '__main__':
     #load_data2(input_folder=r'D:\data\net_aminer')     
     
     
-    input_folder = r'D:\data\net_aminer_test'
-    logger = DefaultLogger(True)
+    input_folder = r'D:\data\net_aminer'
+    logger = DefaultLogger(False)
     conf2labels = load_conf_data_for_classification(input_folder=input_folder, logger=logger)     
     author2labels = load_author_data_for_classification(input_folder=input_folder,logger=logger)     
     embedding = load_embedding(input_folder=input_folder,logger=logger)     
-    #train_evaluate(conf2labels, CONF_NODE_TYPE, embedding, 0.5, num_batch=100, initial_lr=0.01, logger=logger)
-    train_evaluate(author2labels, AUTHOR_NODE_TYPE, embedding, 0.5, num_batch=100, initial_lr=0.01, logger=logger)
+    logger.info('-----------------------conf classification--------------------------------')
+    train_evaluate(conf2labels, CONF_NODE_TYPE, embedding, 0.5, num_batch=100000, num_epoch=5, initial_lr=0.01, logger=logger)
+    logger.info('-----------------------author classification--------------------------------')
+    train_evaluate(author2labels, AUTHOR_NODE_TYPE, embedding, 0.5, num_batch=100000, num_epoch=5, initial_lr=0.01, logger=logger)
     #dup_ids = set([build_node_id(x,CONF_NODE_TYPE) for x in conf2labels.keys()]) & set([build_node_id(x, AUTHOR_NODE_TYPE) for x in author2labels.keys()])
     #logger.info('#duplicate id between author and conf: {}'.format(len(dup_ids)))
     #logger.info('duplicate ids: {}'.format(dup_ids))

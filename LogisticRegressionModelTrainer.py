@@ -50,7 +50,7 @@ class LogisticRegressionModelTrainer:
             optimizer = optim.Adam(self.model.parameters(), lr=self.initial_lr)           
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, self.num_batch)
             total_loss = 0.0
-            bucket_size = 1
+            bucket_size = 10
             bucket = bucket_size
             for i, sample_batched in enumerate(self.dataloader):
                 if i >= self.num_batch:

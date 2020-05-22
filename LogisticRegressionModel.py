@@ -11,7 +11,6 @@ Created on Tue May 19 20:53:09 2020
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.nn import init
 
 class LogisticRegressionModel(nn.Module):
@@ -29,4 +28,4 @@ class LogisticRegressionModel(nn.Module):
         """
         the input x should have the same dimension with self.linear
         """
-        return F.sigmoid(self.linear(x))
+        return torch.sigmoid(self.linear(x))
