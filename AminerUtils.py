@@ -26,7 +26,7 @@ reference https://ericdongyx.github.io/metapath2vec/m2v.html
 from collections import defaultdict
 import networkx as nx
 from IIOUtils import *
-from Logger import DefaultLogger
+from Logger import *
 from HeterogeneousGraph import HeterogeneousGraph
 from MetaPathSchema import MetaPathSchema
 from SkipGramDataSet import SkipGramDataSet
@@ -364,7 +364,7 @@ if __name__ == '__main__':
     
     
     input_folder = r'D:\data\net_aminer'
-    logger = DefaultLogger(False)
+    logger = FileLogger(file_path=os.path.join(input_folder, 'classification_{}.log.txt'.format(datetime.now().strftime('%Y%m%d%H%M%S'))), debug=False)
     conf2labels = load_conf_data_for_classification(input_folder=input_folder, logger=logger)     
     author2labels = load_author_data_for_classification(input_folder=input_folder,logger=logger)     
     embedding = load_embedding(input_folder=input_folder,logger=logger)     
