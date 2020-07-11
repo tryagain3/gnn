@@ -34,23 +34,47 @@ class GraphAttention(nn.Module):
         self.softmax = nn.Softmax(dim=0)
         self.leakyrelu = nn.LeakyReLU()
         
-    def forward(self, id2features, node2neighbors):
+    def forward(self, features, nodes, neighbors):
         """        
         
         
         Parameters
         ----------
-        id2features : TYPE dict Id -> Tensor (input_dim)
-            the node id to node feature map
-        node2neighbors : TYPE dict Id -> List of Ids
-            the node and its neighbors
-
+        features : Tensor with m * input_dim
+            reprsent the features for all the nodes (including nodes and its neighbors)
+        nodes : 
+            list, indicate the target nodes postions in the features
+        neighbors:
+            list of int list, indicate the corresponding negghbors for the input nodes in features
         Returns
         -------
-        id2aggfeatures: TYPE dict Id -> Tensor (output_dim)
-            the id to aggregated feature using attention
+        id2aggfeatures: Tensor (len(nodes) * output_dim)
+            the output features for the nodes
         """
-        pass
+        h = self.w(features)
+        nbr_h = [h[nbrs] for nbrs in neighbors]
+        self_h = [h[x] for x in [[n] * len(nbrs) for n, nbrs in zip(nodes, neighbors)]]
+        cat_h = torch.cat((self_h, nbr_h), dim=1)
+        e = self.leakyrelu(self.a(cat_h))
+        
+        
+        # position of the nodes and its neighbors 
+        pos = [0]        
+        for nbr in neighbors:
+            pos.append(pos[-1] + len(nbr))
+                
+        alpha = [self.softmax(e[pos[i - 1] : pos[i]]) for i in range(1, len(pos))]
+        alpha = torch.cat(tuple(alpha), dim=0)
+        alpha = alpha.squeeze(1)
+        alpha = self.dropout(alpha)
+        
+        indices = torch.LongTensor([[u, v] for (u, nbrs) in zip(nodes, neighbors) for v in nbrs]).t()
+        n = features.shape[0]
+        
+        # https://pytorch.org/docs/stable/sparse.html
+        adj = torch.sparse.FloatTensor(indices, alpha, torch.Size([n, n]))
+        output = torch.sparse.mm(adj, h)[nodes]
+        return output
         
             
 class GAT(nn.Module):
