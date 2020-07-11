@@ -51,26 +51,32 @@ class GraphAttention(nn.Module):
         id2aggfeatures: Tensor (len(nodes) * output_dim)
             the output features for the nodes
         """
+        # step1 apply w for each input feature
         h = self.w(features)
+        
+        # step2 cat nbr_h and self_h
         nbr_h = [h[nbrs] for nbrs in neighbors]
         self_h = [h[x] for x in [[n] * len(nbrs) for n, nbrs in zip(nodes, neighbors)]]
         cat_h = torch.cat((self_h, nbr_h), dim=1)
+        
+        # step3 leakyrelu + self.a(cat_h)
         e = self.leakyrelu(self.a(cat_h))
         
-        
+        # step4 softmax for all neighbors
         # position of the nodes and its neighbors 
         pos = [0]        
         for nbr in neighbors:
             pos.append(pos[-1] + len(nbr))
-                
         alpha = [self.softmax(e[pos[i - 1] : pos[i]]) for i in range(1, len(pos))]
-        alpha = torch.cat(tuple(alpha), dim=0)
+        alpha = torch.cat(alpha, dim=0)
         alpha = alpha.squeeze(1)
+        
+        # step5 dropout 
         alpha = self.dropout(alpha)
-        
+
+        # step6 alpha * h_neibors        
         indices = torch.LongTensor([[u, v] for (u, nbrs) in zip(nodes, neighbors) for v in nbrs]).t()
-        n = features.shape[0]
-        
+        n = features.shape[0]        
         # https://pytorch.org/docs/stable/sparse.html
         adj = torch.sparse.FloatTensor(indices, alpha, torch.Size([n, n]))
         output = torch.sparse.mm(adj, h)[nodes]
